@@ -6,7 +6,7 @@ export const PERSONAS: Persona[] = [
     name: 'Luna AI Assistant',
     icon: 'Moon',
     category: 'general',
-    description: 'General purpose day-to-day assistant with live search, task planning, and advice.',
+    description: 'General purpose day-to-day assistant with live search, task planning, and multi-model routing.',
     prompt: 'You are Luna AI, an advanced open agent assistant inspired by OpenClaw architecture. You have persistent long-term memory and live web search capabilities. Answer user questions accurately with up-to-date information, formatted neatly in markdown with clear structure and action steps when needed.'
   },
   {
@@ -30,8 +30,8 @@ export const PERSONAS: Persona[] = [
     name: 'AI Model Specialist',
     icon: 'Cpu',
     category: 'productivity',
-    description: 'Knowledgeable on Gemini 2.5, Claude 3.5, GPT-4o, DeepSeek, and Ollama.',
-    prompt: 'You are Luna AI - Model Specialist. You know everything about contemporary AI models including Google Gemini 2.5/3.1, Anthropic Claude 3.5 Sonnet, OpenAI GPT-4o, DeepSeek R1, Llama 3.3, and local Ollama setups. Compare cost, latency, context windows, and tool usage across platforms.'
+    description: 'Knowledgeable on OpenClaw, Gemini 2.5, ChatGPT (GPT-4o/o3-mini), Claude 3.5/3.7, DeepSeek R1, and Ollama.',
+    prompt: 'You are Luna AI - Model Specialist. You know everything about contemporary AI models including OpenClaw Agent Core, Google Gemini 2.5/3.1, Anthropic Claude 3.5 & 3.7 Sonnet, OpenAI ChatGPT (GPT-4o, ChatGPT o3-mini), DeepSeek R1, Llama 3.3, and local Ollama setups. Compare cost, latency, context windows, and tool usage across platforms.'
   }
 ];
 
@@ -39,52 +39,124 @@ export const CURRENT_AI_MODELS: AIModelInfo[] = [
   {
     id: 'gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
-    provider: 'Google Vertex AI',
+    provider: 'Google',
+    icon: 'Sparkles',
     contextWindow: '1,000,000+ tokens',
-    strengths: ['Ultra fast latency', 'Search Grounding', 'Reasoning & Thinking Budget', 'Multimodal'],
+    strengths: ['Search Grounding', 'Ultra Low Latency', 'Reasoning & Thinking Budget', 'Multimodal Vision'],
     supportsGrounding: true,
+    supportsVision: true,
+    reasoningBudget: 'Dynamic Thinking',
     status: 'active',
-    description: 'The primary engine powering Luna AI. Offers native Google Search grounding, multi-step planning, and multimodal vision support.'
+    latencyRating: 'Ultra Fast',
+    description: 'The default ultra-fast multimodal engine powering Luna AI with native Google Search grounding and 1M token context.'
   },
   {
-    id: 'gemini-3.1-flash-image',
-    name: 'Gemini 3.1 Flash Image',
-    provider: 'Google Vertex AI',
-    contextWindow: '128k tokens',
-    strengths: ['High Quality Image Gen', 'Image Editing & Inpainting', 'Multi-turn Vision'],
-    supportsGrounding: false,
+    id: 'openclaw-agent-core',
+    name: 'OpenClaw Persistent Agent Core',
+    provider: 'OpenClaw Agent Engine',
+    icon: 'Bot',
+    contextWindow: '200,000 tokens',
+    strengths: ['Persistent Long-Term Memory', 'Browser & Shell Automation', 'Multi-Channel Messaging Bridge', 'Local/Cloud Self-Hosting'],
+    supportsGrounding: true,
+    supportsVision: true,
+    reasoningBudget: 'Autonomous Workflow',
     status: 'available',
-    description: 'Specialized model for image synthesis and precise visual edits based on text prompts.'
+    latencyRating: 'Fast',
+    description: 'Open-source autonomous AI agent architecture supporting persistent state across Slack, Discord, Telegram, and Web.'
   },
   {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'OpenAI (Omni Channel Bridge)',
-    contextWindow: '128k tokens',
-    strengths: ['Conversational fluency', 'Code generation', 'Tool calling'],
-    supportsGrounding: false,
+    id: 'chatgpt-gpt4o',
+    name: 'ChatGPT (GPT-4o Omni)',
+    provider: 'OpenAI (ChatGPT)',
+    icon: 'MessageSquare',
+    contextWindow: '128,000 tokens',
+    strengths: ['Conversational Natural Fluency', 'Multimodal Code Generation', 'Custom GPT Tools', 'Structured Function Calling'],
+    supportsGrounding: true,
+    supportsVision: true,
     status: 'available',
-    description: 'Supported via Luna AI multi-provider bridge architecture.'
+    latencyRating: 'Fast',
+    description: 'Flagship multimodal flagship model from OpenAI powering ChatGPT conversations, structured JSON, and code synthesis.'
+  },
+  {
+    id: 'chatgpt-o3-mini',
+    name: 'ChatGPT o3-mini Reasoning',
+    provider: 'OpenAI (ChatGPT)',
+    icon: 'Cpu',
+    contextWindow: '200,000 tokens',
+    strengths: ['Math & STEM Deep Logic', 'Competitive Coding', 'Chain-of-Thought Reasoning', 'Optimized Latency'],
+    supportsGrounding: false,
+    supportsVision: false,
+    reasoningBudget: 'High Reasoning',
+    status: 'available',
+    latencyRating: 'Deep Reasoning',
+    description: 'OpenAI’s latest reasoning model engineered for complex science, math, software debugging, and multi-step logic.'
+  },
+  {
+    id: 'claude-3-7-sonnet',
+    name: 'Claude 3.7 Sonnet Hybrid',
+    provider: 'Anthropic (Claude)',
+    icon: 'Layers',
+    contextWindow: '200,000 tokens',
+    strengths: ['Hybrid Thinking & Instant Response', 'Full App Coding', 'Nuanced Writing', 'Detailed System Architecture'],
+    supportsGrounding: false,
+    supportsVision: true,
+    reasoningBudget: 'Configurable Thinking',
+    status: 'available',
+    latencyRating: 'Fast',
+    description: 'Anthropic’s flagship hybrid model combining immediate conversational response with extended chain-of-thought reasoning.'
   },
   {
     id: 'claude-3-5-sonnet',
     name: 'Claude 3.5 Sonnet',
-    provider: 'Anthropic (Omni Channel Bridge)',
-    contextWindow: '200k tokens',
-    strengths: ['Complex agentic coding', 'Nuanced writing', 'Artifact rendering'],
+    provider: 'Anthropic (Claude)',
+    icon: 'Layers',
+    contextWindow: '200,000 tokens',
+    strengths: ['Agentic Frontend Coding', 'Artifact Rendering', 'Complex Text Analysis', 'High Precision Instruction Following'],
     supportsGrounding: false,
+    supportsVision: true,
     status: 'available',
-    description: 'Popular choice for complex engineering workflows and document drafting.'
+    latencyRating: 'Fast',
+    description: 'Industry benchmark model for code generation, document parsing, and complex agentic UI workflows.'
+  },
+  {
+    id: 'deepseek-r1',
+    name: 'DeepSeek R1 Reasoning',
+    provider: 'DeepSeek',
+    icon: 'Terminal',
+    contextWindow: '128,000 tokens',
+    strengths: ['Open-Weights Chain of Thought', 'Cost-Effective Math & Code', 'Self-Verification Logic', 'Open Benchmark Leader'],
+    supportsGrounding: false,
+    supportsVision: false,
+    reasoningBudget: 'Deep Reasoning',
+    status: 'available',
+    latencyRating: 'Deep Reasoning',
+    description: 'First-tier open reasoning model trained via reinforcement learning for logic, coding, and mathematical verification.'
+  },
+  {
+    id: 'gemini-3.1-flash-image',
+    name: 'Gemini 3.1 Flash Image (Nano Banana)',
+    provider: 'Google',
+    icon: 'Sparkles',
+    contextWindow: '128,000 tokens',
+    strengths: ['High Precision Image Generation', 'Interactive Inpainting & Editing', 'Text-to-Image Multimodal Synthesis'],
+    supportsGrounding: false,
+    supportsVision: true,
+    status: 'available',
+    latencyRating: 'Fast',
+    description: 'Specialized visual generation model for creating and modifying high-fidelity images based on text prompts.'
   },
   {
     id: 'llama-3-3-70b',
-    name: 'Llama 3.3 (Local Ollama)',
-    provider: 'Self-Hosted Local Node',
-    contextWindow: '128k tokens',
-    strengths: ['100% Privacy', 'Offline operational', 'Zero API cost'],
+    name: 'Llama 3.3 70B (Local Ollama)',
+    provider: 'Meta / Ollama',
+    icon: 'Server',
+    contextWindow: '128,000 tokens',
+    strengths: ['100% On-Premise Privacy', 'Zero API Costs', 'Offline Infrastructure', 'Open Source Model weights'],
     supportsGrounding: false,
+    supportsVision: false,
     status: 'local',
-    description: 'Run locally on your own workstation or GPU instance via Ollama integration.'
+    latencyRating: 'Balanced',
+    description: 'Run locally on your own GPU workstation or local server node via Ollama integration for complete data isolation.'
   }
 ];
 
@@ -115,11 +187,11 @@ export const INITIAL_MEMORIES: MemoryItem[] = [
 export const CHANNEL_INTEGRATIONS: ChannelIntegration[] = [
   {
     id: 'web-public',
-    name: 'Luna AI Global Web Gateway',
+    name: 'Luna AI Global Netlify Gateway',
     iconName: 'Globe',
     status: 'connected',
-    endpoint: '#public',
-    description: 'Directly accessible web portal for visitors on any device globally.'
+    endpoint: 'https://lunaai09.netlify.app/#public',
+    description: 'Directly accessible web portal hosted live on Netlify for visitors globally.'
   },
   {
     id: 'telegram',
