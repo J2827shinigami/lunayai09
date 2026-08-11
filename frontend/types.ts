@@ -16,6 +16,7 @@ export interface Message {
     url: string;
   };
   timestamp?: string;
+  modelEngine?: string;
 }
 
 export interface Persona {
@@ -30,12 +31,16 @@ export interface Persona {
 export interface AIModelInfo {
   id: string;
   name: string;
-  provider: string;
+  provider: 'Google' | 'OpenAI (ChatGPT)' | 'Anthropic (Claude)' | 'OpenClaw Agent Engine' | 'DeepSeek' | 'Meta / Ollama';
+  icon: string;
   contextWindow: string;
   strengths: string[];
   supportsGrounding: boolean;
+  supportsVision: boolean;
+  reasoningBudget?: string;
   status: 'active' | 'available' | 'local';
   description: string;
+  latencyRating: 'Ultra Fast' | 'Fast' | 'Balanced' | 'Deep Reasoning';
 }
 
 export interface MemoryItem {
