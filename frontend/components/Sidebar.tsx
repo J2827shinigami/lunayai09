@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Terminal, BookOpen, Cpu, Database, Layers, Radio, Share2, Sparkles, MessageSquare, Moon } from 'lucide-react';
+import { Globe, Terminal, BookOpen, Cpu, Database, Layers, Radio, Share2, Sparkles, MessageSquare, Moon, Bot } from 'lucide-react';
 import { Persona, ActiveTab } from '../types';
 import { PERSONAS } from '../constants';
 
@@ -39,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Luna AI
               <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.2 rounded border border-purple-500/30">v2.5</span>
             </div>
-            <p className="text-[10px] text-gray-400 font-mono">GLOBAL AGENT PLATFORM</p>
+            <p className="text-[10px] text-gray-400 font-mono">MULTI-MODEL AGENT</p>
           </div>
         </div>
       </div>
@@ -92,14 +92,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={() => setActiveTab('models')}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
             activeTab === 'models'
               ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
               : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
           }`}
         >
-          <Layers size={16} />
-          <span>AI Model Matrix</span>
+          <div className="flex items-center gap-3">
+            <Layers size={16} />
+            <span>AI Model Matrix</span>
+          </div>
+          <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-mono">
+            9 Models
+          </span>
         </button>
       </div>
 
@@ -144,23 +149,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Global Node Gateway Status */}
         <div className="pt-2">
           <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">
-            Gateway Engine
+            Supported Backends
           </div>
-          <div className="bg-gray-950/80 rounded-xl border border-gray-800 p-3 space-y-2.5 font-mono text-[11px]">
+          <div className="bg-gray-950/80 rounded-xl border border-gray-800 p-3 space-y-2 font-mono text-[11px]">
             <div className="flex items-center justify-between text-gray-300">
               <span className="flex items-center gap-1.5">
-                <Radio size={12} className="text-green-400 animate-pulse" />
-                <span>Luna AI Web Relay</span>
+                <Bot size={12} className="text-purple-400" />
+                <span>OpenClaw Agent</span>
               </span>
-              <span className="text-green-400">ONLINE</span>
+              <span className="text-purple-400 font-semibold">Active</span>
             </div>
-            <div className="flex items-center justify-between text-gray-400 text-[10px]">
-              <span>LLM Engine</span>
-              <span className="text-purple-300 truncate max-w-[100px]">Gemini 2.5 Flash</span>
+            <div className="flex items-center justify-between text-gray-300">
+              <span className="flex items-center gap-1.5">
+                <MessageSquare size={12} className="text-green-400" />
+                <span>ChatGPT (GPT-4o)</span>
+              </span>
+              <span className="text-green-400 font-semibold">Connected</span>
             </div>
-            <div className="flex items-center justify-between text-gray-400 text-[10px]">
-              <span>Search Tooling</span>
-              <span className="text-green-400">Google Grounded</span>
+            <div className="flex items-center justify-between text-gray-300">
+              <span className="flex items-center gap-1.5">
+                <Layers size={12} className="text-amber-400" />
+                <span>Claude 3.5/3.7</span>
+              </span>
+              <span className="text-amber-400 font-semibold">Connected</span>
+            </div>
+            <div className="flex items-center justify-between text-gray-300">
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={12} className="text-blue-400" />
+                <span>Gemini 2.5 Flash</span>
+              </span>
+              <span className="text-blue-400 font-semibold">Primary</span>
             </div>
           </div>
         </div>
