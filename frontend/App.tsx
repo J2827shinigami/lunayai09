@@ -6,20 +6,27 @@ import { WebDeploymentModal } from './components/WebDeploymentModal';
 import { MemoryManager } from './components/MemoryManager';
 import { ModelMatrixView } from './components/ModelMatrixView';
 import { PublicVisitorView } from './components/PublicVisitorView';
+import { AdminPasswordModal } from './components/AdminPasswordModal';
 
-import { Message, Persona, ActiveTab, MemoryItem } from './types';
-import { PERSONAS, INITIAL_MEMORIES } from './constants';
+import { Message, Persona, ActiveTab, MemoryItem, AIModelInfo } from './types';
+import { PERSONAS, INITIAL_MEMORIES, CURRENT_AI_MODELS } from './constants';
 import { sendMessageStream, resetConversation, fileToBase64 } from './services/geminiService';
-import { Menu, X, Share2, Sparkles, Globe } from 'lucide-react';
+import { Menu, X, Share2, Sparkles, Globe, Cpu, RotateCcw, Lock } from 'lucide-react';
 
 export default function App() {
   const [currentPersona, setCurrentPersona] = useState<Persona>(PERSONAS[0]);
+  const [selectedModel, setSelectedModel] = useState<AIModelInfo>(CURRENT_AI_MODELS[0]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
   const [memories, setMemories] = useState<MemoryItem[]>(INITIAL_MEMORIES);
   const [isPublicMode, setIsPublicMode] = useState(false);
+  
+  // Admin password lock state
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingTab, setPendingTab] = useState<ActiveTab | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +53,33 @@ export default function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const requestAdminAccess = (targetTab?: ActiveTab) => {
+    if (isAdminAuthenticated) {
+      if (targetTab) {
+        setActiveTab(targetTab);
+        window.location.hash = targetTab;
+      }
+      setIsPublicMode(false);
+    } else {
+      if (targetTab) setPendingTab(targetTab);
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handlePasswordSuccess = () => {
+    setIsAdminAuthenticated(true);
+    setShowPasswordModal(false);
+    setIsPublicMode(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      window.location.hash = pendingTab;
+      setPendingTab(null);
+    } else {
+      setActiveTab('chat');
+      window.location.hash = 'chat';
+    }
+  };
+
   const navigateToTab = (tab: ActiveTab) => {
     setActiveTab(tab);
     setIsPublicMode(false);
@@ -64,6 +98,11 @@ export default function App() {
     setMobileMenuOpen(false);
     navigateToTab('chat');
   }, []);
+
+  const handleResetChat = () => {
+    setMessages([]);
+    resetConversation();
+  };
 
   const handleAddMemory = (memory: Omit<MemoryItem, 'id' | 'createdAt'>) => {
     const newMem: MemoryItem = {
@@ -117,7 +156,8 @@ export default function App() {
       role: 'model', 
       text: '', 
       isStreaming: true,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      modelEngine: selectedModel.name
     }]);
 
     try {
@@ -125,7 +165,8 @@ export default function App() {
         text, 
         currentPersona.prompt, 
         memories,
-        attachmentData ? { mimeType: attachmentData.mimeType, data: attachmentData.data } : undefined
+        attachmentData ? { mimeType: attachmentData.mimeType, data: attachmentData.data } : undefined,
+        selectedModel.name
       );
 
       for await (const chunk of stream) {
@@ -144,7 +185,7 @@ export default function App() {
       console.error("Chat error:", error);
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMsgId 
-          ? { ...msg, text: "⚠️ An error occurred while communicating with the agent. Please check your network connection." } 
+          ? { ...msg, text: "I experienced a brief pause. Please try asking your question again!" } 
           : msg
       ));
     } finally {
@@ -156,11 +197,18 @@ export default function App() {
   };
 
   if (isPublicMode) {
-    return <PublicVisitorView onBackToDashboard={() => navigateToTab('chat')} />;
+    return <PublicVisitorView onBackToDashboard={() => requestAdminAccess('chat')} />;
   }
 
   return (
     <div className="flex h-full w-full bg-gray-950 text-gray-100 font-sans overflow-hidden">
+      {/* Password Modal */}
+      <AdminPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={handlePasswordSuccess}
+      />
+
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div 
@@ -189,8 +237,8 @@ export default function App() {
         {/* Mobile Top Header */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900">
           <div className="flex items-center gap-2 font-bold text-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-            OmniClaw Platform
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></span>
+            Luna AI Platform
           </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-400 hover:text-white">
             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -206,19 +254,43 @@ export default function App() {
               {activeTab === 'memory' && 'Persistent Memory Store'}
               {activeTab === 'models' && 'Supported AI Models Matrix'}
               
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] uppercase font-mono tracking-wider border border-blue-500/20">
-                ACTIVE
+              <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 text-[10px] uppercase font-mono tracking-wider border border-purple-500/20 flex items-center gap-1">
+                <Cpu size={10} />
+                {selectedModel.name}
               </span>
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {activeTab === 'chat' && currentPersona.description}
-              {activeTab === 'deploy' && 'Publish to world accessible web URL, iframe widgets, or messaging apps'}
+              {activeTab === 'deploy' && 'Publish to Netlify (https://lunaai09.netlify.app/), iframe widgets, or messaging apps'}
               {activeTab === 'memory' && 'Facts & context retained across all user conversations'}
-              {activeTab === 'models' && 'OmniClaw multi-provider model selection architecture'}
+              {activeTab === 'models' && 'Multi-provider AI routing: OpenClaw, ChatGPT, Claude, Gemini, DeepSeek'}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
+            {activeTab === 'chat' && messages.length > 0 && (
+              <button
+                onClick={handleResetChat}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition-colors"
+                title="Clear current session"
+              >
+                <RotateCcw size={13} />
+                <span>Clear Session</span>
+              </button>
+            )}
+
+            {/* Lock session button */}
+            {isAdminAuthenticated && (
+              <button
+                onClick={() => setIsAdminAuthenticated(false)}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-red-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition-colors"
+                title="Lock Admin Studio"
+              >
+                <Lock size={13} />
+                <span>Lock Console</span>
+              </button>
+            )}
+
             <button
               onClick={() => navigateToTab('deploy')}
               className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1.5 transition-colors"
@@ -229,7 +301,7 @@ export default function App() {
 
             <button
               onClick={navigateToPublic}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shadow-md shadow-blue-600/20"
+              className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors shadow-md shadow-purple-600/20"
             >
               <Globe size={14} />
               <span>Live Website View</span>
@@ -244,14 +316,14 @@ export default function App() {
               <div className="flex-1 overflow-y-auto scroll-smooth">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-blue-500/20 border border-blue-400/30">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-purple-500/20 border border-purple-400/30">
                       <Sparkles size={32} className="text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-100 mb-2">
                       {currentPersona.name} Initialized
                     </h3>
                     <p className="text-sm text-gray-400 max-w-md leading-relaxed mb-6">
-                      Ready to assist with real-time web search, persistent memory, and problem solving. Ask any question to get started.
+                      Ready to assist with real-time web search, persistent memory, and problem solving using <strong className="text-purple-300">{selectedModel.name}</strong>.
                     </p>
                   </div>
                 ) : (
@@ -283,7 +355,13 @@ export default function App() {
           )}
 
           {activeTab === 'models' && (
-            <ModelMatrixView />
+            <ModelMatrixView 
+              activeModelId={selectedModel.id}
+              onSelectModel={(model) => {
+                setSelectedModel(model);
+                navigateToTab('chat');
+              }}
+            />
           )}
         </div>
 
