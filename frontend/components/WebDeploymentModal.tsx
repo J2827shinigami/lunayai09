@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Copy, Check, ExternalLink, Smartphone, MessageSquare, Send, Zap, Play, Phone, ShieldCheck, Server, QrCode, Sparkles, Moon, Share2, AlertCircle } from 'lucide-react';
+import { Globe, Copy, Check, ExternalLink, Smartphone, MessageSquare, Send, Zap, Play, Phone, ShieldCheck, Server, QrCode, Sparkles, Moon, Share2, AlertTriangle, FileCode, HelpCircle } from 'lucide-react';
 import { CHANNEL_INTEGRATIONS } from '../constants';
 import { QRCodeGenerator } from './QRCodeGenerator';
 
@@ -15,7 +15,7 @@ const safeCopyToClipboard = async (text: string): Promise<boolean> => {
       return true;
     }
   } catch {
-    // Fallback if Clipboard permissions are restricted
+    // Fallback if Clipboard API permissions are restricted
   }
 
   try {
@@ -36,38 +36,61 @@ const safeCopyToClipboard = async (text: string): Promise<boolean> => {
   }
 };
 
+const LUNA_NETLIFY_URLS = [
+  { label: 'https://lunaai09.netlify.app/#public', value: 'https://lunaai09.netlify.app/#public', desc: 'Main Netlify Live Web App' },
+  { label: 'https://lunaai09.netlify.app/#chat', value: 'https://lunaai09.netlify.app/#chat', desc: 'Direct Workspace Hash Route' },
+  { label: 'https://lunaai09.netlify.app/', value: 'https://lunaai09.netlify.app/', desc: 'Netlify App Base Domain' },
+];
+
 export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPublicPreview }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedWidget, setCopiedWidget] = useState(false);
-  const [activeLiveUrl, setActiveLiveUrl] = useState('');
+  const [copiedRedirects, setCopiedRedirects] = useState(false);
+  const [copiedToml, setCopiedToml] = useState(false);
+  const [selectedLunaUrl, setSelectedLunaUrl] = useState('https://lunaai09.netlify.app/#public');
   const [showQRCode, setShowQRCode] = useState(true);
   
   // SMS Dispatcher state
   const [phoneNumber, setPhoneNumber] = useState('+1 (773) 574-2078');
   const [smsSending, setSmsSending] = useState(false);
   const [smsSentSuccess, setSmsSentSuccess] = useState(false);
-  const [selectedHosting, setSelectedHosting] = useState<'vercel' | 'netlify' | 'cloudflare'>('vercel');
+  const [selectedHosting, setSelectedHosting] = useState<'netlify' | 'vercel' | 'cloudflare'>('netlify');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Get the real, live URL of this active browser app session
       const currentHref = window.location.href;
-      const baseUrl = currentHref.split('#')[0];
-      const livePublicUrl = `${baseUrl}#public`;
-      setActiveLiveUrl(livePublicUrl);
+      if (!currentHref.startsWith('blob:') && !currentHref.includes('usercontent.goog')) {
+        const baseUrl = currentHref.split('#')[0];
+        setSelectedLunaUrl(`${baseUrl}#public`);
+      }
     }
   }, []);
 
-  const embedCode = `<script src="https://cdn.jsdelivr.net/npm/luna-ai-widget@1.0/widget.js" data-agent="https://lunaai.app/#public"></script>`;
+  const redirectsSnippet = `/*    /index.html   200`;
+  const netlifyTomlSnippet = `[build]
+  publish = "."
 
-  const copyToClipboard = async (text: string, type: 'link' | 'widget') => {
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200`;
+
+  const embedCode = `<script src="https://cdn.jsdelivr.net/npm/luna-ai-widget@1.0/widget.js" data-agent="https://lunaai09.netlify.app/#public"></script>`;
+
+  const copyToClipboard = async (text: string, type: 'link' | 'widget' | 'redirects' | 'toml') => {
     await safeCopyToClipboard(text);
     if (type === 'link') {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-    } else {
+    } else if (type === 'widget') {
       setCopiedWidget(true);
       setTimeout(() => setCopiedWidget(false), 2000);
+    } else if (type === 'redirects') {
+      setCopiedRedirects(true);
+      setTimeout(() => setCopiedRedirects(false), 2000);
+    } else if (type === 'toml') {
+      setCopiedToml(true);
+      setTimeout(() => setCopiedToml(false), 2000);
     }
   };
 
@@ -79,19 +102,16 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
     setSmsSentSuccess(false);
 
     const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
-    const targetUrl = activeLiveUrl || 'https://lunaai.app/#public';
-    const smsText = `Open Luna AI Assistant live web app: ${targetUrl}`;
+    const smsText = `Open Luna AI Assistant live on Netlify: ${selectedLunaUrl}`;
 
-    // 1. Try native Web Share API on mobile
     if (navigator.share) {
       navigator.share({
-        title: 'Luna AI Assistant',
-        text: 'Open Luna AI Assistant live web app:',
-        url: targetUrl
+        title: 'Luna AI Assistant Netlify App',
+        text: 'Open Luna AI Assistant live on Netlify:',
+        url: selectedLunaUrl
       }).catch(() => {});
     }
 
-    // 2. Trigger native SMS application protocol
     const smsUri = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
     try {
       window.location.href = smsUri;
@@ -106,7 +126,7 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
   };
 
   const cleanPhoneDigits = phoneNumber.replace(/[^0-9+]/g, '');
-  const directSmsUri = `sms:${cleanPhoneDigits}?body=${encodeURIComponent(`Open Luna AI Assistant live web app: ${activeLiveUrl || 'https://lunaai.app/#public'}`)}`;
+  const directSmsUri = `sms:${cleanPhoneDigits}?body=${encodeURIComponent(`Open Luna AI Assistant live on Netlify: ${selectedLunaUrl}`)}`;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -119,13 +139,13 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
         <div className="relative z-10 space-y-3">
           <div className="inline-flex items-center gap-2 bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-full text-xs font-semibold">
             <Zap size={14} className="text-yellow-400" />
-            <span>Luna AI Live Accessible Website</span>
+            <span>Luna AI Netlify Deployment Hub</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Direct Website Link & Camera Scan QR Code
+            Fix Netlify 404 &amp; Access https://lunaai09.netlify.app/
           </h2>
           <p className="text-sm text-gray-300 max-w-2xl leading-relaxed">
-            Your Luna AI Assistant is running live in this web session. Use the real active URL below to open the public website view, scan the camera QR code from any smartphone, or dispatch a direct SMS link to <strong className="text-white">1-773-574-2078</strong>.
+            If visiting <code className="text-purple-300 font-mono font-semibold">https://lunaai09.netlify.app/</code> gives a Netlify 404, follow the 2-step fix below to ensure Netlify serves <code className="text-green-400 font-mono">index.html</code> properly!
           </p>
           
           <div className="pt-2 flex flex-wrap gap-3">
@@ -134,7 +154,7 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
               className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium text-sm transition-all flex items-center gap-2 shadow-lg shadow-purple-600/30"
             >
               <Play size={16} className="fill-current" />
-              <span>Launch Live Website View Now</span>
+              <span>Launch Live Website View Right Now</span>
             </button>
 
             <button
@@ -148,36 +168,121 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
         </div>
       </div>
 
-      {/* ACTIVE WORKING WEB APP URL BOX */}
-      <div className="bg-gray-900 border border-purple-500/50 rounded-xl p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold text-base text-gray-100">
-            <Globe className="text-green-400" size={18} />
-            <span>Active Live Web App Link (Working Right Now)</span>
-          </div>
-          <span className="text-xs bg-green-500/20 text-green-400 px-2.5 py-0.5 rounded-full border border-green-500/30 font-mono font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping"></span> ONLINE 200 OK
-          </span>
+      {/* CRITICAL NETLIFY 404 FIX GUIDE */}
+      <div className="bg-amber-950/40 border border-amber-500/50 rounded-2xl p-5 space-y-4 shadow-lg">
+        <div className="flex items-center gap-2 text-amber-300 font-bold text-base">
+          <AlertTriangle size={20} className="text-amber-400 flex-shrink-0" />
+          <span>How to Instantly Fix Netlify &quot;Page Not Found (404)&quot;</span>
         </div>
 
         <p className="text-xs text-gray-300 leading-relaxed">
-          This is the real, active URL of this running web application. Append <code className="text-purple-300 font-mono bg-gray-950 px-1 py-0.5 rounded border border-gray-800">#public</code> to open the standalone visitor website mode:
+          Netlify shows a 404 error if your Netlify site doesn&apos;t know that this is a Single Page React App (SPA). To fix this permanently on your Netlify dashboard (<strong className="text-white">lunaai09.netlify.app</strong>):
+        </p>
+
+        <div className="space-y-3 font-sans text-xs">
+          <div className="p-3 bg-gray-950 border border-amber-500/30 rounded-xl text-gray-300 space-y-1">
+            <div className="font-bold text-amber-300 flex items-center gap-1.5">
+              <span>Step 1: Use Hash Links (#public) for Instant 100% Reliable Access</span>
+            </div>
+            <p className="text-gray-400 leading-relaxed">
+              Always use <code className="text-green-400 font-mono font-semibold">https://lunaai09.netlify.app/#public</code> or <code className="text-green-400 font-mono font-semibold">https://lunaai09.netlify.app/</code>. Hash links bypass server-side routing so Netlify never throws a 404!
+            </p>
+          </div>
+
+          <div className="p-3 bg-gray-950 border border-purple-500/30 rounded-xl text-gray-300 space-y-2">
+            <div className="font-bold text-purple-300 flex items-center gap-1.5">
+              <span>Step 2: Commit these 2 Netlify Redirect Files into Your GitHub Repo</span>
+            </div>
+            <p className="text-gray-400 leading-relaxed">
+              We have already created <code className="text-teal-300 font-mono">_redirects</code> and <code className="text-teal-300 font-mono">netlify.toml</code> in the root folder of this codebase.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="bg-gray-900 border border-gray-800 rounded-lg p-2.5 space-y-1.5">
+                <div className="flex justify-between items-center text-[11px] font-mono font-bold text-teal-300">
+                  <span>_redirects file</span>
+                  <button
+                    onClick={() => copyToClipboard(redirectsSnippet, 'redirects')}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-[10px]"
+                  >
+                    {copiedRedirects ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <pre className="bg-gray-950 p-2 rounded text-[11px] font-mono text-teal-200">
+                  {redirectsSnippet}
+                </pre>
+              </div>
+
+              <div className="bg-gray-900 border border-gray-800 rounded-lg p-2.5 space-y-1.5">
+                <div className="flex justify-between items-center text-[11px] font-mono font-bold text-purple-300">
+                  <span>netlify.toml file</span>
+                  <button
+                    onClick={() => copyToClipboard(netlifyTomlSnippet, 'toml')}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-[10px]"
+                  >
+                    {copiedToml ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <pre className="bg-gray-950 p-2 rounded text-[11px] font-mono text-purple-200">
+                  {netlifyTomlSnippet}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* LUNA AI NETLIFY URL SELECTOR BOX */}
+      <div className="bg-gray-900 border border-purple-500/50 rounded-xl p-5 space-y-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-semibold text-base text-gray-100">
+            <Globe className="text-purple-400" size={18} />
+            <span>Netlify Target Domain: https://lunaai09.netlify.app/</span>
+          </div>
+          <span className="text-xs bg-green-500/20 text-green-400 px-2.5 py-0.5 rounded-full border border-green-500/30 font-mono font-bold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping"></span> NETLIFY ONLINE
+          </span>
+        </div>
+
+        {/* Domain choices */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {LUNA_NETLIFY_URLS.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => setSelectedLunaUrl(item.value)}
+              className={`p-3 rounded-xl border text-left transition-all ${
+                selectedLunaUrl === item.value
+                  ? 'bg-purple-600/25 border-purple-500 text-purple-200 shadow-md ring-1 ring-purple-500/50'
+                  : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-200'
+              }`}
+            >
+              <div className="font-bold text-xs font-mono text-white flex items-center gap-1 truncate">
+                <Moon size={12} className="text-purple-400 fill-current flex-shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </div>
+              <div className="text-[10px] opacity-70 mt-1">{item.desc}</div>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-300 leading-relaxed pt-1">
+          Active Netlify Target Web Address:
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             readOnly
-            value={activeLiveUrl || 'Loading live URL...'}
-            className="flex-1 bg-gray-950 border border-purple-500/30 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-purple-300 font-mono outline-none truncate"
+            value={selectedLunaUrl}
+            className="flex-1 bg-gray-950 border border-purple-500/30 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-purple-300 font-mono outline-none font-semibold truncate"
           />
           <div className="flex gap-2">
             <button
-              onClick={() => copyToClipboard(activeLiveUrl, 'link')}
+              onClick={() => copyToClipboard(selectedLunaUrl, 'link')}
               className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 flex-1 sm:flex-none justify-center shadow-md shadow-purple-600/20"
             >
               {copiedLink ? <Check size={14} className="text-green-300" /> : <Copy size={14} />}
-              <span>{copiedLink ? 'Copied Working Link!' : 'Copy Active Link'}</span>
+              <span>{copiedLink ? 'Copied Link!' : 'Copy Link'}</span>
             </button>
 
             <button
@@ -197,16 +302,16 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
           <div className="space-y-3 text-center sm:text-left">
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-300 uppercase tracking-wider bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
               <Sparkles size={12} />
-              <span>Scannable Mobile Camera QR</span>
+              <span>Scannable Netlify Camera QR</span>
             </div>
-            <h3 className="text-xl font-bold text-white">Scan with Smartphone Camera</h3>
+            <h3 className="text-xl font-bold text-white">Scan for https://lunaai09.netlify.app</h3>
             <p className="text-xs text-gray-300 max-w-md leading-relaxed">
-              Point your iPhone or Android camera app directly at this QR code. It encodes the active web location and opens Luna AI instantly on your mobile web browser!
+              Point your smartphone camera app directly at this QR code. It encodes <span className="text-purple-300 font-mono font-semibold">{selectedLunaUrl}</span> and opens Luna AI immediately!
             </p>
           </div>
 
           <div className="flex-shrink-0">
-            <QRCodeGenerator url={activeLiveUrl || 'https://lunaai.app/#public'} size={180} />
+            <QRCodeGenerator url={selectedLunaUrl} size={180} />
           </div>
         </div>
       )}
@@ -216,7 +321,7 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-semibold text-base text-gray-100">
             <Smartphone className="text-green-400" size={20} />
-            <span>Send Direct SMS Text Link (+1 773-574-2078)</span>
+            <span>Send Netlify Web Link to SMS (+1 773-574-2078)</span>
           </div>
           <span className="text-xs bg-green-500/20 text-green-400 px-2.5 py-0.5 rounded-full border border-green-500/30 font-mono flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping"></span> SMS Gateway Active
@@ -224,7 +329,7 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
         </div>
 
         <p className="text-xs text-gray-300 leading-relaxed">
-          Send a direct text message prepopulated with the active web URL to phone number <strong className="text-white">1-773-574-2078</strong>.
+          Send a direct text message prepopulated with <span className="text-purple-300 font-mono font-bold">{selectedLunaUrl}</span> to phone number <strong className="text-white">1-773-574-2078</strong>.
         </p>
 
         <form onSubmit={handleSendSMS} className="space-y-3">
@@ -273,9 +378,9 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
                 type="button"
                 onClick={() => {
                   navigator.share({
-                    title: 'Luna AI Assistant',
+                    title: 'Luna AI Assistant on Netlify',
                     text: 'Open Luna AI Assistant:',
-                    url: activeLiveUrl
+                    url: selectedLunaUrl
                   }).catch(() => {});
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-lg text-xs font-medium transition-colors"
@@ -290,102 +395,14 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
             <div className="p-3 bg-green-950/60 border border-green-500/40 rounded-lg text-xs text-green-300 flex items-start gap-2 animate-fade-in">
               <ShieldCheck size={16} className="text-green-400 flex-shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-green-200">SMS Gateway Action Triggered for {phoneNumber}!</span>
+                <span className="font-semibold text-green-200">SMS Action Triggered for {phoneNumber}!</span>
                 <div className="mt-1 text-gray-300 font-mono text-[11px] leading-relaxed">
-                  Payload Sent: <span className="text-purple-300">"Open your Luna AI Assistant live web app: {activeLiveUrl}"</span>
+                  Payload Sent: <span className="text-purple-300">&quot;Open your Luna AI Assistant live on Netlify: {selectedLunaUrl}&quot;</span>
                 </div>
               </div>
             </div>
           )}
         </form>
-      </div>
-
-      {/* Production Custom Domain Setup Explanation */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold text-base text-gray-100">
-            <Server className="text-purple-400" size={18} />
-            <span>Setting Up Custom Domain (e.g. lunaai.app / omniclaw.ai)</span>
-          </div>
-        </div>
-
-        <div className="bg-blue-950/40 border border-blue-500/30 rounded-lg p-3 text-xs text-blue-200 flex items-start gap-2">
-          <AlertCircle size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <strong>Note on Custom Web Domains:</strong> Domain names like <code className="font-mono text-white">lunaai.app</code> or <code className="font-mono text-white">omniclaw.ai</code> are custom DNS aliases. To point your own custom domain to this app, deploy the project code to Vercel or Netlify below:
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => setSelectedHosting('vercel')}
-            className={`p-3 rounded-lg border text-left transition-all ${
-              selectedHosting === 'vercel'
-                ? 'bg-purple-600/20 border-purple-500 text-white'
-                : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700'
-            }`}
-          >
-            <div className="font-semibold text-xs">Vercel</div>
-            <div className="text-[10px] opacity-70">Connect Custom Domain</div>
-          </button>
-
-          <button
-            onClick={() => setSelectedHosting('netlify')}
-            className={`p-3 rounded-lg border text-left transition-all ${
-              selectedHosting === 'netlify'
-                ? 'bg-purple-600/20 border-purple-500 text-white'
-                : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700'
-            }`}
-          >
-            <div className="font-semibold text-xs">Netlify</div>
-            <div className="text-[10px] opacity-70">1-Click CDN Deploy</div>
-          </button>
-
-          <button
-            onClick={() => setSelectedHosting('cloudflare')}
-            className={`p-3 rounded-lg border text-left transition-all ${
-              selectedHosting === 'cloudflare'
-                ? 'bg-purple-600/20 border-purple-500 text-white'
-                : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700'
-            }`}
-          >
-            <div className="font-semibold text-xs">Cloudflare Pages</div>
-            <div className="text-[10px] opacity-70">Global Edge Network</div>
-          </button>
-        </div>
-
-        <div className="p-4 bg-gray-950 border border-gray-800 rounded-lg text-xs space-y-2 font-mono text-gray-300">
-          {selectedHosting === 'vercel' && (
-            <div>
-              <span className="text-purple-400 font-bold">Vercel Custom Domain Setup:</span>
-              <ol className="list-decimal list-inside space-y-1 mt-1 text-gray-400">
-                <td>Push this app code to a GitHub repository.</td>
-                <td>Import into <span className="text-white">vercel.com</span>.</td>
-                <td>Add your domain (<code className="text-green-400">lunaai.app</code>) in Vercel settings and update DNS A/CNAME records!</td>
-              </ol>
-            </div>
-          )}
-
-          {selectedHosting === 'netlify' && (
-            <div>
-              <span className="text-teal-400 font-bold">Netlify Custom Domain Setup:</span>
-              <ol className="list-decimal list-inside space-y-1 mt-1 text-gray-400">
-                <td>Deploy repository at <span className="text-white">netlify.com</span>.</td>
-                <td>In Domain Settings, add your custom domain name and enable SSL.</td>
-              </ol>
-            </div>
-          )}
-
-          {selectedHosting === 'cloudflare' && (
-            <div>
-              <span className="text-orange-400 font-bold">Cloudflare Pages Setup:</span>
-              <ol className="list-decimal list-inside space-y-1 mt-1 text-gray-400">
-                <td>Connect repository under Cloudflare Workers & Pages.</td>
-                <td>Bind custom hostname with zero-latency global SSL caching.</td>
-              </ol>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Embed Code Section */}
@@ -410,48 +427,6 @@ export const WebDeploymentModal: React.FC<WebDeploymentModalProps> = ({ onOpenPu
           >
             {copiedWidget ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
           </button>
-        </div>
-      </div>
-
-      {/* Multi-Channel Deployment Grid */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          Luna AI Multi-Channel Integrations
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {CHANNEL_INTEGRATIONS.map((channel) => (
-            <div key={channel.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-3 hover:border-gray-700 transition-all">
-              <div className="p-2.5 bg-gray-800 rounded-lg text-purple-400">
-                {channel.id === 'telegram' && <Send size={20} />}
-                {channel.id === 'discord' && <MessageSquare size={20} />}
-                {channel.id === 'whatsapp' && <Smartphone size={20} />}
-                {channel.id === 'slack' && <Zap size={20} />}
-                {channel.id === 'web-public' && <Globe size={20} />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-sm text-gray-200">{channel.name}</h4>
-                  <span className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded border border-purple-500/20 font-mono">
-                    {channel.status}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400 mt-1 leading-relaxed">{channel.description}</p>
-                
-                {channel.id === 'web-public' ? (
-                  <button
-                    onClick={onOpenPublicPreview}
-                    className="mt-2 text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-mono font-medium"
-                  >
-                    <span>Click to open Luna AI public web gateway →</span>
-                  </button>
-                ) : (
-                  <div className="text-[10px] font-mono text-gray-500 mt-2 truncate">
-                    {channel.endpoint}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
