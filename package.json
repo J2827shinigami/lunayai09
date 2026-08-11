@@ -1,5 +1,5 @@
 {
-  "name": "luna-ai-assistant-omniclaw-platform",
+  "name": "luna-ai-assistant-https-lunaai09-netlify-app",
   "workspaces": ["frontend", "backend"], 
   "scripts": {
     "dev-frontend": "npm run dev --prefix frontend",
