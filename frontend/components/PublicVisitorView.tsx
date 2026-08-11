@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, Globe, ArrowLeft, Send, Sparkles, RefreshCw, Copy, Check, Moon } from 'lucide-react';
+import { Bot, User, Globe, ArrowLeft, Send, Sparkles, RefreshCw, Copy, Check, Moon, Lock, Scissors, Clipboard } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { sendMessageStream } from '../services/geminiService';
 import { PERSONAS } from '../constants';
+import { AdminPasswordModal } from './AdminPasswordModal';
 
 interface PublicVisitorViewProps {
   onBackToDashboard: () => void;
@@ -15,15 +16,47 @@ const PUBLIC_SAMPLE_PROMPTS = [
   "Write a Python automation script for file sorting"
 ];
 
+const safeCopyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fallback if Clipboard API permissions are restricted
+  }
+
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.warn('Clipboard copy fallback failed:', err);
+    return false;
+  }
+};
+
 export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDashboard }) => {
   const [input, setInput] = useState('');
-  const [displayUrl, setDisplayUrl] = useState('');
+  const [displayUrl, setDisplayUrl] = useState('https://lunaai09.netlify.app/#public');
   const [copied, setCopied] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [actionMessageId, setActionMessageId] = useState<string | null>(null);
+  const [actionType, setActionType] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<Array<{ id: string; role: 'user' | 'model'; text: string; sources?: any[] }>>([
     {
       id: 'welcome',
       role: 'model',
-      text: "👋 **Welcome to Luna AI Public Web Assistant**\n\nI am **Luna AI**, your intelligent day-to-day assistant powered by Gemini 2.5 Flash and real-time Google search grounding. Ask me anything about technology, AI models, daily planning, shell scripts, or recent events!"
+      text: "👋 **Welcome to Luna AI Public Web Assistant**\n\nI am **Luna AI**, hosted live at **https://lunaai09.netlify.app/**."
     }
   ]);
   const [loading, setLoading] = useState(false);
@@ -31,9 +64,13 @@ export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDa
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const currentHref = window.location.href;
-      const baseUrl = currentHref.split('#')[0];
-      setDisplayUrl(`${baseUrl}#public`);
+      const href = window.location.href;
+      if (!href.startsWith('blob:') && !href.includes('usercontent.goog')) {
+        const clean = href.split('#')[0];
+        setDisplayUrl(`${clean}#public`);
+      } else {
+        setDisplayUrl('https://lunaai09.netlify.app/#public');
+      }
     }
   }, []);
 
@@ -46,6 +83,46 @@ export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDa
       navigator.clipboard?.writeText(displayUrl).catch(() => {});
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleAdminConsoleClick = () => {
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordSuccess = () => {
+    setShowPasswordModal(false);
+    onBackToDashboard();
+  };
+
+  const handleMessageAction = async (msgId: string, text: string, type: 'cut' | 'copy' | 'paste') => {
+    if (type === 'copy' || type === 'cut') {
+      if (text) {
+        await safeCopyToClipboard(text);
+        setActionMessageId(msgId);
+        setActionType(type);
+        setTimeout(() => {
+          setActionMessageId(null);
+          setActionType(null);
+        }, 2000);
+      }
+    } else if (type === 'paste') {
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+          const pasted = await navigator.clipboard.readText();
+          if (pasted) {
+            setInput(prev => prev + (prev ? ' ' : '') + pasted);
+          }
+        }
+      } catch {
+        // Ignore clipboard read error
+      }
+      setActionMessageId(msgId);
+      setActionType('paste');
+      setTimeout(() => {
+        setActionMessageId(null);
+        setActionType(null);
+      }, 2000);
     }
   };
 
@@ -79,7 +156,7 @@ export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDa
     } catch (err) {
       console.error(err);
       setMessages(prev => prev.map(m => 
-        m.id === botMsgId ? { ...m, text: "⚠️ Network request failed. Please try again." } : m
+        m.id === botMsgId ? { ...m, text: "I experienced a brief pause. Please try asking your question again!" } : m
       ));
     } finally {
       setLoading(false);
@@ -88,24 +165,31 @@ export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDa
 
   return (
     <div className="h-full flex flex-col bg-gray-950 text-gray-100 font-sans overflow-hidden">
+      {/* Password Modal */}
+      <AdminPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={handlePasswordSuccess}
+      />
+
       {/* Navigation / Web Address Header */}
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
-            onClick={onBackToDashboard}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs text-gray-300 rounded-lg transition-colors border border-gray-700"
-            title="Return to Admin Studio"
+            onClick={handleAdminConsoleClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-lg text-xs font-semibold transition-all shadow-sm"
+            title="Access Password Protected Admin Studio"
           >
-            <ArrowLeft size={14} />
+            <Lock size={13} className="text-purple-400" />
             <span className="hidden sm:inline">Admin Console</span>
           </button>
         </div>
 
-        {/* Real Address Bar Display */}
+        {/* Clean Address Bar Display */}
         <div className="flex-1 max-w-xl bg-gray-950 border border-purple-500/30 rounded-lg px-3 py-1.5 flex items-center justify-between gap-2 text-xs font-mono text-purple-300 shadow-inner min-w-0">
           <div className="flex items-center gap-2 truncate min-w-0">
             <Moon size={14} className="text-purple-400 flex-shrink-0 fill-current" />
-            <span className="truncate font-semibold">{displayUrl || 'Loading address...'}</span>
+            <span className="truncate font-semibold">{displayUrl}</span>
           </div>
           <button
             onClick={copyUrl}
@@ -118,7 +202,7 @@ export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDa
 
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-          <span className="text-xs font-mono text-green-400 hidden sm:inline">Luna AI Web Live</span>
+          <span className="text-xs font-mono text-green-400 hidden sm:inline">Netlify Live</span>
         </div>
       </header>
 
@@ -154,6 +238,66 @@ export const PublicVisitorView: React.FC<PublicVisitorViewProps> = ({ onBackToDa
                       </a>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Toolbar Cut/Copy/Paste */}
+              {msg.role === 'model' && msg.text && (
+                <div className="mt-3 pt-2 border-t border-gray-800/60 flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider font-mono">
+                    Actions:
+                  </span>
+
+                  <button
+                    onClick={() => handleMessageAction(msg.id, msg.text, 'copy')}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded text-[11px] font-medium border border-gray-700 transition-all"
+                  >
+                    {actionMessageId === msg.id && actionType === 'copy' ? (
+                      <>
+                        <Check size={11} className="text-green-400" />
+                        <span className="text-green-400 font-bold">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={11} className="text-purple-400" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleMessageAction(msg.id, msg.text, 'cut')}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded text-[11px] font-medium border border-gray-700 transition-all"
+                  >
+                    {actionMessageId === msg.id && actionType === 'cut' ? (
+                      <>
+                        <Check size={11} className="text-green-400" />
+                        <span className="text-green-400 font-bold">Cut</span>
+                      </>
+                    ) : (
+                      <>
+                        <Scissors size={11} className="text-amber-400" />
+                        <span>Cut</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleMessageAction(msg.id, msg.text, 'paste')}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded text-[11px] font-medium border border-gray-700 transition-all"
+                  >
+                    {actionMessageId === msg.id && actionType === 'paste' ? (
+                      <>
+                        <Check size={11} className="text-green-400" />
+                        <span className="text-green-400 font-bold">Pasted to Input</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard size={11} className="text-blue-400" />
+                        <span>Paste</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
             </div>
