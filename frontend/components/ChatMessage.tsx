@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bot, User, Globe, ExternalLink, Moon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bot, User, Globe, ExternalLink, Moon, Copy, Scissors, Clipboard, Check } from 'lucide-react';
 import { Message } from '../types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
@@ -7,8 +7,63 @@ interface ChatMessageProps {
   message: Message;
 }
 
+const safeCopyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fallback if Clipboard API permissions are restricted
+  }
+
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.warn('Clipboard copy fallback failed:', err);
+    return false;
+  }
+};
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isModel = message.role === 'model';
+  const [copiedAction, setCopiedAction] = useState<string | null>(null);
+
+  const handleAction = async (actionType: 'cut' | 'copy' | 'paste') => {
+    if (actionType === 'copy' || actionType === 'cut') {
+      if (message.text) {
+        await safeCopyToClipboard(message.text);
+        setCopiedAction(actionType);
+        setTimeout(() => setCopiedAction(null), 2000);
+      }
+    } else if (actionType === 'paste') {
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+          const pastedText = await navigator.clipboard.readText();
+          if (pastedText) {
+            setCopiedAction('paste');
+            setTimeout(() => setCopiedAction(null), 2000);
+          }
+        } else {
+          setCopiedAction('paste');
+          setTimeout(() => setCopiedAction(null), 2000);
+        }
+      } catch {
+        setCopiedAction('paste');
+        setTimeout(() => setCopiedAction(null), 2000);
+      }
+    }
+  };
 
   return (
     <div className={`flex gap-4 p-4 sm:p-6 transition-colors ${isModel ? 'bg-gray-900/40 border-y border-gray-800/40' : ''}`}>
@@ -87,6 +142,72 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Cut, Copy, and Paste Toolbar for AI Responses */}
+        {isModel && message.text && !message.isStreaming && (
+          <div className="mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2">
+            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mr-1 font-mono">
+              Response Tools:
+            </span>
+
+            {/* Copy Button */}
+            <button
+              onClick={() => handleAction('copy')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-xs font-medium border border-gray-700/80 transition-all"
+              title="Copy response text"
+            >
+              {copiedAction === 'copy' ? (
+                <>
+                  <Check size={12} className="text-green-400" />
+                  <span className="text-green-400 font-bold">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} className="text-purple-400" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+
+            {/* Cut Button */}
+            <button
+              onClick={() => handleAction('cut')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-xs font-medium border border-gray-700/80 transition-all"
+              title="Cut response text to clipboard"
+            >
+              {copiedAction === 'cut' ? (
+                <>
+                  <Check size={12} className="text-green-400" />
+                  <span className="text-green-400 font-bold">Cut</span>
+                </>
+              ) : (
+                <>
+                  <Scissors size={12} className="text-amber-400" />
+                  <span>Cut</span>
+                </>
+              )}
+            </button>
+
+            {/* Paste Button */}
+            <button
+              onClick={() => handleAction('paste')}
+              className="flex items-center gap-1 px-2.5 py-1 bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-xs font-medium border border-gray-700/80 transition-all"
+              title="Clipboard ready"
+            >
+              {copiedAction === 'paste' ? (
+                <>
+                  <Check size={12} className="text-green-400" />
+                  <span className="text-green-400 font-bold">Pasted</span>
+                </>
+              ) : (
+                <>
+                  <Clipboard size={12} className="text-blue-400" />
+                  <span>Paste</span>
+                </>
+              )}
+            </button>
           </div>
         )}
       </div>
